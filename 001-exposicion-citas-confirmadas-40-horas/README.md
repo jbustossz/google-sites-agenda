@@ -4,10 +4,12 @@
 
 ## 📋 Resumen Ejecutivo
 
-Esta documentación proporciona toda la información necesaria para que desarrolladores y proveedores externos puedan consultar **todas las citas (excepto anuladas) por rango de fechas** mediante la API OData de RedSalud.
+Esta documentación proporciona toda la información necesaria para que desarrolladores y proveedores externos puedan consultar **todas las citas dentales (excepto anuladas) por rango de fechas** mediante la API OData de RedSalud.
 
 ### Objetivo del Requerimiento
-Consultar todas las citas (excepto las anuladas) dentro de un rango de fechas específico, con soporte completo de **paginación** para manejar grandes volúmenes de datos.
+Consultar todas las citas dentales (excepto las anuladas) dentro de un rango de fechas específico, con soporte completo de **paginación** para manejar grandes volúmenes de datos.
+
+**Área Dental:** `8FF62D7E-2147-499F-931F-A7DC0055B8D1`
 
 **Estados incluidos:** Booked (Agendado), Confirmed (Confirmado), CheckedIn (Presentado), ServicePerformed (Atendido), Blocked (Bloqueado), NotPerformed (No Presentado)
 
@@ -79,6 +81,12 @@ https://proxy.megasalud.cl/ThirdPartyService
 GET /ThirdPartyService/Appointments
 ```
 
+**⚠️ IMPORTANTE - Filtro de Área Dental:**
+Todas las consultas DEBEN incluir el filtro de área dental:
+- **Área Dental ID:** `8FF62D7E-2147-499F-931F-A7DC0055B8D1`
+- **Filtro OData:** `Service/AreaId eq 8FF62D7E-2147-499F-931F-A7DC0055B8D1`
+- Este filtro es **OBLIGATORIO** en todas las consultas para obtener únicamente citas dentales.
+
 ### Endpoint de Metadata
 ```
 GET /ThirdPartyService/$metadata
@@ -91,6 +99,12 @@ Proporciona la definición completa del modelo de datos OData.
 
 ### $filter (Filtros)
 
+**⚠️ OBLIGATORIO - Filtro de Área Dental:**
+Todas las consultas DEBEN incluir el filtro de área dental:
+```
+Service/AreaId eq 8FF62D7E-2147-499F-931F-A7DC0055B8D1
+```
+
 **Sintaxis para filtros de fecha:**
 ```
 DateTimeFrom ge {fecha_inicio} and DateTimeTo le {fecha_fin}
@@ -99,6 +113,11 @@ DateTimeFrom ge {fecha_inicio} and DateTimeTo le {fecha_fin}
 **Sintaxis para filtros de estado:**
 ```
 Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'
+```
+
+**Ejemplo de filtro completo (fecha + estado + área dental):**
+```
+DateTimeFrom ge 2025-12-15T21:48:36-03:00 and DateTimeTo le 2026-02-13T21:48:36-03:00 and Status eq WebApiModel.Enum.AppointmentStatus'Confirmed' and Service/AreaId eq 8FF62D7E-2147-499F-931F-A7DC0055B8D1
 ```
 
 **Operadores disponibles:**
@@ -259,32 +278,32 @@ Todos los ejemplos usan el formato verificado que funciona correctamente:
 - Usar URL encoding para comillas simples: `%27`
 - **Nota:** El parámetro `$orderby` no está disponible en este endpoint
 
-### Ejemplo 1: Obtener Todas las Citas (Sin Filtro)
+### Ejemplo 1: Obtener Todas las Citas Dentales (Sin Filtro de Estado)
 
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?$top=500&$skip=0' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=Service/AreaId%20eq%208FF62D7E-2147-499F-931F-A7DC0055B8D1&%24top=500&%24skip=0' \
 --header 'Authorization: Bearer {TU_TOKEN}' \
 --header 'X-AppTimezone: -240' \
 --header 'Accept: application/json'
 ```
 
-**Resultado:** Obtiene todas las citas de todos los estados.
+**Resultado:** Obtiene todas las citas dentales de todos los estados (excepto anuladas).
 
-### Ejemplo 2: Obtener Solo Citas Confirmadas
+### Ejemplo 2: Obtener Solo Citas Dentales Confirmadas
 
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?$filter=Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&$top=500&$skip=0' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=Service/AreaId%20eq%208FF62D7E-2147-499F-931F-A7DC0055B8D1%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24top=500&%24skip=0' \
 --header 'Authorization: Bearer {TU_TOKEN}' \
 --header 'X-AppTimezone: -240' \
 --header 'Accept: application/json'
 ```
 
-### Ejemplo 3: Obtener Citas por Rango de Fechas y Estado (FORMATO VERIFICADO)
+### Ejemplo 3: Obtener Citas Dentales por Rango de Fechas y Estado (FORMATO VERIFICADO)
 
 **⚠️ Este es el formato que funciona correctamente:**
 
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?$filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&$top=500&$skip=0' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?$filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27%20and%20Service/AreaId%20eq%208FF62D7E-2147-499F-931F-A7DC0055B8D1&$top=500&$skip=0' \
 --header 'Authorization: Bearer {TU_TOKEN}' \
 --header 'X-AppTimezone: -240' \
 --header 'Accept: application/json'
@@ -296,6 +315,7 @@ https://proxy.megasalud.cl/ThirdPartyService/Appointments?
   $filter=DateTimeFrom ge 2025-12-15T21:48:36-03:00 
     and DateTimeTo le 2026-02-13T21:48:36-03:00 
     and Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'
+    and Service/AreaId eq 8FF62D7E-2147-499F-931F-A7DC0055B8D1
   &$top=500
   &$skip=0
 ```
@@ -306,28 +326,28 @@ https://proxy.megasalud.cl/ThirdPartyService/Appointments?
 - Usar URL encoding para dos puntos: `%3A`
 - Usar URL encoding para comillas simples: `%27`
 
-### Ejemplo 4: Paginación - Primera Página
+### Ejemplo 4: Paginación - Primera Página (Citas Dentales)
 
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?$filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&$top=500&$skip=0' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27%20and%20Service/AreaId%20eq%208FF62D7E-2147-499F-931F-A7DC0055B8D1&%24top=500&%24skip=0' \
 --header 'Authorization: Bearer {TU_TOKEN}' \
 --header 'X-AppTimezone: -240' \
 --header 'Accept: application/json'
 ```
 
-### Ejemplo 5: Paginación - Segunda Página
+### Ejemplo 5: Paginación - Segunda Página (Citas Dentales)
 
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?$filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&$top=500&$skip=500' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27%20and%20Service/AreaId%20eq%208FF62D7E-2147-499F-931F-A7DC0055B8D1&%24top=500&%24skip=500' \
 --header 'Authorization: Bearer {TU_TOKEN}' \
 --header 'X-AppTimezone: -240' \
 --header 'Accept: application/json'
 ```
 
-### Ejemplo 6: Seleccionar Solo Campos Específicos
+### Ejemplo 6: Seleccionar Solo Campos Específicos (Citas Dentales)
 
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?$select=Id,DateTimeFrom,DateTimeTo,Status,PatientId&$top=500&$skip=0' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=Service/AreaId%20eq%208FF62D7E-2147-499F-931F-A7DC0055B8D1&%24select=Id,DateTimeFrom,DateTimeTo,Status,PatientId&%24top=500&%24skip=0' \
 --header 'Authorization: Bearer {TU_TOKEN}' \
 --header 'X-AppTimezone: -240' \
 --header 'Accept: application/json'
@@ -550,13 +570,13 @@ Contactar al equipo de integración para obtener un token Bearer.
 **⚠️ IMPORTANTE:** Usar este formato exacto que está verificado y funciona:
 
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?$filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&$top=500&$skip=0' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?$filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27%20and%20Service/AreaId%20eq%208FF62D7E-2147-499F-931F-A7DC0055B8D1&$top=500&$skip=0' \
 --header 'Authorization: Bearer {TU_TOKEN}' \
 --header 'X-AppTimezone: -240' \
 --header 'Accept: application/json'
 ```
 
-**Nota:** En la URL, usar `$` directamente (no `%24`) para `$filter`, `$top`, `$skip`. El resto de caracteres especiales deben estar URL-encoded (`%20` para espacios, `%3A` para `:`, `%27` para comillas simples). **El parámetro `$orderby` no está disponible en este endpoint.**
+**Nota:** En la URL, usar `$` directamente (no `%24`) para `$filter`, `$top`, `$skip`. El resto de caracteres especiales deben estar URL-encoded (`%20` para espacios, `%3A` para `:`, `%27` para comillas simples). **El parámetro `$orderby` no está disponible en este endpoint.** **TODOS los ejemplos incluyen el filtro de área dental (`Service/AreaId eq 8FF62D7E-2147-499F-931F-A7DC0055B8D1`).**
 
 ### Paso 3: Implementar Paginación
 Usar los ejemplos proporcionados en la sección "Paginación Obligatoria" para implementar la paginación completa.
