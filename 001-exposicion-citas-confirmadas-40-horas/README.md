@@ -1,16 +1,26 @@
-# Documentación Técnica de la API - Consulta de Citas Confirmadas
+# Documentación Técnica de la API - Consulta de Citas
 
 ## 📋 Resumen Ejecutivo
 
-Esta documentación proporciona toda la información necesaria para que desarrolladores y proveedores externos puedan consultar **citas confirmadas por rango de fechas** mediante la API OData de RedSalud.
+Esta documentación proporciona toda la información necesaria para que desarrolladores y proveedores externos puedan consultar **todas las citas (excepto anuladas) por rango de fechas** mediante la API OData de RedSalud.
 
 ### Objetivo del Requerimiento
-Consultar todas las citas con estado `Confirmed` dentro de un rango de fechas específico, con soporte completo de **paginación** para manejar grandes volúmenes de datos.
+Consultar todas las citas (excepto las anuladas) dentro de un rango de fechas específico, con soporte completo de **paginación** para manejar grandes volúmenes de datos.
+
+**Estados incluidos:** Booked (Agendado), Confirmed (Confirmado), Checked-In (Presentado), Treated (Atendido), Blocked (Bloqueado), Not Treated (No Presentado)
+
+**Estados excluidos:** Cancelled (Anulado) - NO se incluyen en los resultados
 
 ### Estado Actual
-- ✅ **Endpoint disponible:** `https://proxy.megasalud.cl/ThirdPartyService/Appointments`
-- ✅ **Funcionalidad:** Consulta de citas confirmadas con paginación
-- ⏳ **Mejoras planificadas:** Ruta segura con credenciales diferenciadas (1 sprint - Pedro Wittig)
+
+⚠️ **IMPORTANTE:** Estas rutas NO están disponibles para proveedores externos hasta completar los requisitos críticos.
+
+- ⚠️ **Endpoint actual:** `https://proxy.megasalud.cl/ThirdPartyService/Appointments` (NO disponible para proveedores)
+- ⚠️ **Estado:** Requiere enmascaramiento mediante API Gateway y certificaciones de calidad
+- ⏳ **Requisitos pendientes:**
+  - Enmascaramiento mediante API Gateway (Pedro Wittig)
+  - Certificaciones de calidad completas
+  - Ruta segura con credenciales diferenciadas
 
 ---
 
@@ -138,14 +148,26 @@ https://proxy.megasalud.cl/ThirdPartyService/Appointments?
 - ✅ Documentación completa
 - ✅ Ejemplos de código con paginación
 
-### Próximas Mejoras (1 Sprint)
-- 🔄 **Responsable:** Pedro Wittig
-- 🔄 Ruta segura dedicada para proveedores
-- 🔄 Credenciales diferenciadas
-- 🔄 Rate limiting específico
-- 🔄 Mejor auditoría y logging
+### Requisitos Críticos para Disponibilización
 
-**Nota:** Una vez implementadas las mejoras, esta documentación será actualizada.
+⚠️ **ESTAS RUTAS NO ESTÁN DISPONIBLES PARA PROVEEDORES HASTA COMPLETAR:**
+
+1. **Enmascaramiento mediante API Gateway** ⚠️ **CRÍTICO**
+   - Las rutas DEBEN ser enmascaradas por API Gateway
+   - No se permite exposición directa a proveedores externos
+
+2. **Certificaciones de Calidad Completas** ⚠️ **CRÍTICO**
+   - Pasar TODAS las certificaciones de calidad
+   - Incluye: pruebas de estrés, seguridad, performance
+
+3. **Ruta Segura con Credenciales Diferenciadas**
+   - Sistema de autenticación separado para proveedores
+   - Rate limiting específico
+   - Mejor auditoría y logging
+
+**Responsable:** Pedro Wittig
+
+**Nota:** Una vez implementado el API Gateway y completadas todas las certificaciones, esta documentación será actualizada con las nuevas rutas y credenciales.
 
 ---
 

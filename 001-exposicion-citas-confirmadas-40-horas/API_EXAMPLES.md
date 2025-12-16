@@ -1,12 +1,24 @@
-# Ejemplos Prácticos de la API
+# Ejemplos Prácticos de la API - Consulta de Citas
 
-Este documento contiene ejemplos listos para usar de las operaciones más comunes de la API.
+Este documento contiene ejemplos listos para usar para **consultar citas** mediante la API.
 
 ## Contexto del Requerimiento
 
-Este conjunto de ejemplos está enfocado en **consultar citas confirmadas por rango de fechas** con soporte completo de **paginación**.
+Este conjunto de ejemplos está enfocado en **consultar todas las citas (excepto anuladas) por rango de fechas** con soporte completo de **paginación**.
 
-**Nota importante:** Actualmente se utiliza el endpoint estándar con credenciales del sistema. En 1 sprint, Pedro Wittig implementará una ruta segura con credenciales diferenciadas para proveedores externos.
+**Estados incluidos:** Booked (Agendado), Confirmed (Confirmado), Checked-In (Presentado), Treated (Atendido), Blocked (Bloqueado), Not Treated (No Presentado)
+
+**Estados excluidos:** Cancelled (Anulado) - NO se incluyen en los resultados
+
+**⚠️ IMPORTANTE - Estado Actual:**
+- **Endpoint actual:** `https://proxy.megasalud.cl/ThirdPartyService/Appointments`
+- **Estado:** NO disponible para proveedores externos hasta completar requisitos críticos
+- **Requisitos pendientes:**
+  - Enmascaramiento mediante API Gateway (Pedro Wittig)
+  - Certificaciones de calidad completas
+  - Ruta segura con credenciales diferenciadas
+
+**Nota:** Estos ejemplos muestran la estructura de las consultas. Las rutas finales estarán disponibles a través del API Gateway una vez completados los requisitos de seguridad y certificaciones.
 
 ## ⚠️ Consideraciones Técnicas Obligatorias
 
@@ -32,17 +44,21 @@ Este conjunto de ejemplos está enfocado en **consultar citas confirmadas por ra
 
 ### cURL - Primera Página
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24orderby=DateTimeFrom%20asc&%24top=1000&%24skip=0' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=0' \
 --header 'Authorization: Bearer {TU_TOKEN}' \
 --header 'X-AppTimezone: -240' \
 --header 'Accept: application/json, text/plain, */*'
 ```
 
-**⚠️ IMPORTANTE:** El valor `$top=1000` es obligatorio y fijo.
+**⚠️ IMPORTANTE:** 
+- El valor `$top=500` es obligatorio y es el máximo permitido.
+- **Sobre el filtro:** `Status eq Confirmed` significa "Status **igual a** Confirmed (Confirmado)"
+  - `eq` = "equal" (igual a)
+  - Esto **INCLUYE** solo las citas con estado Confirmado
 
 ### cURL - Segunda Página
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24orderby=DateTimeFrom%20asc&%24top=1000&%24skip=1000' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=500' \
 --header 'Authorization: Bearer {TU_TOKEN}' \
 --header 'X-AppTimezone: -240' \
 --header 'Accept: application/json, text/plain, */*'
@@ -50,7 +66,7 @@ curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24fi
 
 ### cURL - Tercera Página
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24orderby=DateTimeFrom%20asc&%24top=1000&%24skip=2000' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=1000' \
 --header 'Authorization: Bearer {TU_TOKEN}' \
 --header 'X-AppTimezone: -240' \
 --header 'Accept: application/json, text/plain, */*'
@@ -66,9 +82,14 @@ https://proxy.megasalud.cl/ThirdPartyService/Appointments?
   &$top=500
 ```
 
+**Explicación del filtro:**
+- `DateTimeFrom ge {fecha_inicio}` - Citas desde esta fecha/hora (mayor o igual)
+- `DateTimeTo le {fecha_fin}` - Citas hasta esta fecha/hora (menor o igual)
+- `Status eq Confirmed` - Estado igual a Confirmed (Confirmado) - Citas que han sido confirmadas
+
 ### JavaScript (fetch) - CON PAGINACIÓN COMPLETA
 ```javascript
-async function getAllConfirmedAppointments(dateFrom, dateTo, token) {
+async function getAllAppointments(dateFrom, dateTo, token) {
   const baseUrl = 'https://proxy.megasalud.cl/ThirdPartyService/Appointments';
   const pageSize = 500; // OBLIGATORIO: Máximo permitido es 500
   let skip = 0;
@@ -134,7 +155,7 @@ client.DefaultRequestHeaders.Add("X-AppTimezone", "-240");
 client.DefaultRequestHeaders.Add("Accept", "application/json");
 
 var filter = "DateTimeFrom ge 2025-12-15T21:48:36-03:00 and DateTimeTo le 2026-02-13T21:48:36-03:00 and Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'";
-var url = $"https://proxy.megasalud.cl/ThirdPartyService/Appointments?$filter={Uri.EscapeDataString(filter)}&$orderby=DateTimeFrom asc&$top=1000"; // OBLIGATORIO: Siempre 1000
+var url = $"https://proxy.megasalud.cl/ThirdPartyService/Appointments?$filter={Uri.EscapeDataString(filter)}&$orderby=DateTimeFrom asc&$top=500"; // OBLIGATORIO: Máximo permitido es 500
 
 var response = await client.GetAsync(url);
 var content = await response.Content.ReadAsStringAsync();
@@ -146,7 +167,7 @@ Console.WriteLine(content);
 import requests
 from typing import List, Dict
 
-def get_all_confirmed_appointments(date_from: str, date_to: str, token: str) -> List[Dict]:
+def get_all_appointments(date_from: str, date_to: str, token: str) -> List[Dict]:
     """
     Obtiene todas las citas confirmadas en un rango de fechas con paginación automática.
     
@@ -199,16 +220,16 @@ def get_all_confirmed_appointments(date_from: str, date_to: str, token: str) -> 
     return all_appointments
 
 # Uso
-appointments = get_all_confirmed_appointments(
+appointments = get_all_appointments(
     "2025-12-15T21:48:36-03:00",
     "2026-02-13T21:48:36-03:00",
     "TU_TOKEN_AQUI"
 )
 
-print(f"Total de citas confirmadas: {len(appointments)}")
+print(f"Total de citas (excepto anuladas): {len(appointments)}")
 ```
 
-## Ejemplo 2: Obtener una Cita por ID
+## Ejemplo 2: Obtener una Cita por ID (Excepto Anuladas)
 
 ### cURL
 ```bash
@@ -234,28 +255,93 @@ fetch(url, {
 .then(data => console.log(data));
 ```
 
-## Ejemplo 3: Obtener Citas por Estado
+## Ejemplo 3: Modos de Consulta por Estado
 
-### Todas las citas confirmadas
+**⚠️ IMPORTANTE:** El tope máximo de consulta es **500 resultados por página** (usar `$top=500` en todos los casos).
+
+### 3.1. Consultar Solo Citas Confirmadas
+
+**Filtro:** Estado igual a Confirmed (Confirmado)
+
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24top=100' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=0' \
 --header 'Authorization: Bearer {TU_TOKEN}' \
 --header 'X-AppTimezone: -240'
 ```
 
-### Citas canceladas
+**Explicación:** `Status eq Confirmed` significa "Status igual a Confirmed (Confirmado)", por lo tanto INCLUYE solo las citas confirmadas.
+
+### 3.2. Consultar Solo Citas Agendadas (Booked)
+
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Cancelled%27&%24top=100' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Booked%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=0' \
 --header 'Authorization: Bearer {TU_TOKEN}' \
 --header 'X-AppTimezone: -240'
 ```
 
-### Excluir citas canceladas
+**Estado:** `Booked` = **Agendado** (citas agendadas pero aún no confirmadas)
+
+### 3.3. Consultar Solo Citas Confirmadas (Confirmed)
+
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=Status%20ne%20WebApiModel.Enum.AppointmentStatus%27Cancelled%27&%24top=100' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=0' \
 --header 'Authorization: Bearer {TU_TOKEN}' \
 --header 'X-AppTimezone: -240'
 ```
+
+**Estado:** `Confirmed` = **Confirmado** (citas confirmadas)
+
+### 3.4. Consultar Solo Citas Presentadas (CheckedIn)
+
+```bash
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27CheckedIn%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=0' \
+--header 'Authorization: Bearer {TU_TOKEN}' \
+--header 'X-AppTimezone: -240'
+```
+
+**Estado:** `CheckedIn` = **Presentado** (citas donde el paciente se ha presentado)
+
+### 3.5. Consultar Solo Citas Atendidas (ServicePerformed)
+
+```bash
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27ServicePerformed%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=0' \
+--header 'Authorization: Bearer {TU_TOKEN}' \
+--header 'X-AppTimezone: -240'
+```
+
+**Estado:** `ServicePerformed` = **Atendido** (citas donde el servicio ya fue realizado)
+
+### 3.6. Consultar Solo Citas Bloqueadas (Blocked)
+
+```bash
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Blocked%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=0' \
+--header 'Authorization: Bearer {TU_TOKEN}' \
+--header 'X-AppTimezone: -240'
+```
+
+**Estado:** `Blocked` = **Bloqueado** (citas bloqueadas)
+
+### 3.7. Consultar Solo Citas No Presentadas (NotPerformed)
+
+```bash
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27NotPerformed%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=0' \
+--header 'Authorization: Bearer {TU_TOKEN}' \
+--header 'X-AppTimezone: -240'
+```
+
+**Estado:** `NotPerformed` = **No Presentado** (citas donde el paciente no se presentó)
+
+### Resumen de Estados
+
+| Valor en API | Descripción en Español | Valor Numérico |
+|--------------|------------------------|----------------|
+| `Booked` | **Agendado** | 0 |
+| `Confirmed` | **Confirmado** | 1 |
+| `CheckedIn` | **Presentado** | 3 |
+| `ServicePerformed` | **Atendido** | 4 |
+| `Blocked` | **Bloqueado** | 5 |
+| `NotPerformed` | **No Presentado** | 6 |
+| `Cancelled` | **Anulado** | 2 |
 
 ## Ejemplo 4: Obtener Citas por Paciente
 
@@ -283,80 +369,20 @@ curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24fi
 --header 'X-AppTimezone: -240'
 ```
 
-## Ejemplo 6: Crear una Nueva Cita
+## Ejemplo 6: Paginación de Resultados - Citas Confirmadas
 
-### cURL
+### Primera página (primeros 500)
 ```bash
-curl --location --request POST 'https://proxy.megasalud.cl/ThirdPartyService/Appointments' \
---header 'Authorization: Bearer {TU_TOKEN}' \
---header 'X-AppTimezone: -240' \
---header 'Content-Type: application/json' \
---data '{
-  "PatientId": "{PATIENT_ID}",
-  "ResourceId": "{RESOURCE_ID}",
-  "CenterId": "{CENTER_ID}",
-  "ServiceId": "{SERVICE_ID}",
-  "AppointmentTypeId": "{APPOINTMENT_TYPE_ID}",
-  "DateTimeFrom": "2025-12-20T10:00:00-03:00",
-  "DateTimeTo": "2025-12-20T10:30:00-03:00",
-  "Status": "Booked"
-}'
-```
-
-### JavaScript
-```javascript
-const appointmentData = {
-  PatientId: "{PATIENT_ID}",
-  ResourceId: "{RESOURCE_ID}",
-  CenterId: "{CENTER_ID}",
-  ServiceId: "{SERVICE_ID}",
-  AppointmentTypeId: "{APPOINTMENT_TYPE_ID}",
-  DateTimeFrom: "2025-12-20T10:00:00-03:00",
-  DateTimeTo: "2025-12-20T10:30:00-03:00",
-  Status: "Booked"
-};
-
-fetch('https://proxy.megasalud.cl/ThirdPartyService/Appointments', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${token}`,
-    'X-AppTimezone': '-240',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify(appointmentData)
-})
-.then(response => response.json())
-.then(data => console.log('Cita creada:', data));
-```
-
-## Ejemplo 7: Actualizar Estado de una Cita
-
-### cURL (PATCH)
-```bash
-curl --location --request PATCH 'https://proxy.megasalud.cl/ThirdPartyService/Appointments({CITA_ID})' \
---header 'Authorization: Bearer {TU_TOKEN}' \
---header 'X-AppTimezone: -240' \
---header 'Content-Type: application/json' \
---header 'If-Match: {ETAG}' \
---data '{
-  "Status": "Confirmed"
-}'
-```
-
-## Ejemplo 8: Paginación de Resultados - Citas Confirmadas
-
-### Primera página (primeros 1000)
-```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24top=1000&%24skip=0&%24orderby=DateTimeFrom%20asc' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24top=500&%24skip=0&%24orderby=DateTimeFrom%20asc' \
 --header 'Authorization: Bearer {TU_TOKEN}' \
 --header 'X-AppTimezone: -240'
 ```
 
-**⚠️ IMPORTANTE:** El valor `$top=1000` es obligatorio y fijo.
+**⚠️ IMPORTANTE:** El valor `$top=500` es obligatorio y es el máximo permitido.
 
-### Segunda página (siguientes 1000)
+### Segunda página (siguientes 500)
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24top=1000&%24skip=1000&%24orderby=DateTimeFrom%20asc' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24top=500&%24skip=500&%24orderby=DateTimeFrom%20asc' \
 --header 'Authorization: Bearer {TU_TOKEN}' \
 --header 'X-AppTimezone: -240'
 ```
@@ -369,7 +395,7 @@ curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24fi
 
 **Detectar última página:** Cuando la respuesta contiene menos de 500 resultados.
 
-## Ejemplo 9: Seleccionar Solo Campos Específicos
+## Ejemplo 7: Seleccionar Solo Campos Específicos
 
 ### cURL
 ```bash
@@ -378,7 +404,7 @@ curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24se
 --header 'X-AppTimezone: -240'
 ```
 
-## Ejemplo 10: Expandir Relaciones
+## Ejemplo 8: Expandir Relaciones
 
 ### Obtener citas con información del paciente
 ```bash
@@ -394,21 +420,42 @@ curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24ex
 --header 'X-AppTimezone: -240'
 ```
 
-## Valores de Enums Comunes
+## Valores de Enums - Estados de Citas
 
-### AppointmentStatus
-- `Booked` - Reservada
-- `Confirmed` - Confirmada
-- `Cancelled` - Cancelada
-- `CheckedIn` - Registrada
-- `ServicePerformed` - Servicio realizado
-- `Blocked` - Bloqueada
-- `NotPerformed` - No realizada
+### AppointmentStatus - Explicación Completa
+
+**⚠️ IMPORTANTE:** El tope máximo de consulta es **500 resultados por página** (`$top=500`).
+
+| Valor en API | Descripción en Español | Valor Numérico | Descripción |
+|--------------|------------------------|----------------|-------------|
+| `Booked` | **Agendado** | 0 | Citas que han sido agendadas pero aún no confirmadas |
+| `Confirmed` | **Confirmado** | 1 | Citas que han sido confirmadas |
+| `CheckedIn` | **Presentado** | 3 | Citas donde el paciente se ha presentado (check-in realizado) |
+| `ServicePerformed` | **Atendido** | 4 | Citas donde el servicio ya fue realizado/atendido |
+| `Blocked` | **Bloqueado** | 5 | Citas que están bloqueadas |
+| `NotPerformed` | **No Presentado** | 6 | Citas donde el paciente no se presentó |
+| `Cancelled` | **Anulado** | 2 | Citas que han sido anuladas (excluidas del requerimiento principal) |
 
 ### Sintaxis en Filtros
+
+**Modo 1: Excluir citas anuladas (incluye todos los demás estados):**
 ```
 Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'
 ```
+
+**Modo 2: Consultar por estado específico:**
+```
+Status eq WebApiModel.Enum.AppointmentStatus'Booked'        # Solo Agendado
+Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'     # Solo Confirmado
+Status eq WebApiModel.Enum.AppointmentStatus'CheckedIn'      # Solo Presentado
+Status eq WebApiModel.Enum.AppointmentStatus'ServicePerformed'  # Solo Atendido
+Status eq WebApiModel.Enum.AppointmentStatus'Blocked'       # Solo Bloqueado
+Status eq WebApiModel.Enum.AppointmentStatus'NotPerformed'  # Solo No Presentado
+```
+
+**Operadores:**
+- `eq` = "equal" (igual a)
+- `ne` = "not equal" (diferente de / no igual a)
 
 ## Zonas Horarias Comunes
 
@@ -436,7 +483,11 @@ Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'
    - **OBLIGATORIO:** Realizar pruebas de estrés en QA antes de producción
 5. **URL Encoding:** Los espacios y caracteres especiales deben estar codificados en la URL
 6. **Enums:** Usar siempre la sintaxis completamente calificada: `WebApiModel.Enum.AppointmentStatus'Value'`
-7. **Estado Actual:** Endpoint temporal - En 1 sprint se implementará ruta segura con credenciales diferenciadas (Pedro Wittig)
+7. **Estado Actual:** 
+   - ⚠️ Endpoint NO disponible para proveedores hasta completar:
+   - Enmascaramiento mediante API Gateway (Pedro Wittig)
+   - Certificaciones de calidad completas
+   - Ruta segura con credenciales diferenciadas
 
 ## Troubleshooting
 

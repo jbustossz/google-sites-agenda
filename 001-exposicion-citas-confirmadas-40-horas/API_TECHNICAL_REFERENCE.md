@@ -1,58 +1,97 @@
-# Documentación Técnica de la API - Consulta de Citas Confirmadas
+# Documentación Técnica de la API - Consulta de Citas
 
 ## 1. Contexto del Requerimiento
 
 ### 1.1. Objetivo
-Proporcionar a proveedores externos la capacidad de consultar todas las citas confirmadas dentro de un rango de fechas específico mediante una API REST basada en OData v4.
+Proporcionar a proveedores externos la capacidad de consultar todas las citas (excepto las anuladas) dentro de un rango de fechas específico mediante una API REST basada en OData v4.
 
 ### 1.2. Alcance
 - **Entidad:** Appointments (Citas)
-- **Filtro principal:** Citas con estado `Confirmed` (Confirmadas)
+- **Filtro principal:** Todas las citas EXCEPTO estado `Cancelled` (Anulado)
+- **Estados incluidos:** Booked (Agendado), Confirmed (Confirmado), Checked-In (Presentado), Treated (Atendido), Blocked (Bloqueado), Not Treated (No Presentado)
 - **Filtro secundario:** Rango de fechas (`DateTimeFrom` y `DateTimeTo`)
-- **Funcionalidad:** Consulta de solo lectura (GET)
+- **Funcionalidad:** Consulta de solo lectura (GET) - Solo consulta, no se permite crear, actualizar o modificar
 - **Paginación:** Requerida para manejar grandes volúmenes de datos
 
-### 1.3. Estado de Implementación
+### 1.3. Estado de Implementación y Requisitos de Seguridad
 
-#### Estado Actual (Temporal)
-- **Endpoint disponible:** `https://proxy.megasalud.cl/ThirdPartyService/Appointments`
+#### ⚠️ REQUISITO CRÍTICO: API Gateway y Certificaciones
+
+**ANTES de disponibilizar estas rutas para consumo de integraciones o proveedores externos, se DEBEN cumplir los siguientes requisitos obligatorios:**
+
+1. **Enmascaramiento mediante API Gateway**
+   - **OBLIGATORIO:** Las rutas DEBEN ser enmascaradas por API Gateway
+   - El endpoint actual (`https://proxy.megasalud.cl/ThirdPartyService/Appointments`) NO debe exponerse directamente a proveedores externos
+   - Se requiere implementar un API Gateway que actúe como intermediario y capa de seguridad
+
+2. **Certificaciones de Calidad**
+   - **OBLIGATORIO:** Pasar TODAS las certificaciones de calidad antes de disponibilizar el consumo
+   - Incluye pruebas de estrés, seguridad, performance, y validaciones funcionales
+   - No se permite disponibilizar el endpoint sin completar todas las certificaciones
+
+3. **Responsable de Implementación**
+   - **Responsable:** Pedro Wittig
+   - **Tarea:** 
+     - Implementar enmascaramiento mediante API Gateway
+     - Disponibilizar ruta segura con credenciales diferenciadas para proveedores externos
+     - Asegurar que todas las certificaciones de calidad sean aprobadas
+
+#### Estado Actual (NO DISPONIBLE PARA PROVEEDORES)
+- **Endpoint actual:** `https://proxy.megasalud.cl/ThirdPartyService/Appointments`
+- **Estado:** Endpoint temporal, NO debe usarse directamente por proveedores externos
 - **Autenticación:** Bearer Token (sistema actual)
 - **Acceso:** Mediante credenciales existentes del sistema
+- **⚠️ ADVERTENCIA:** Este endpoint NO está listo para consumo de proveedores externos hasta que se complete el enmascaramiento por API Gateway y las certificaciones de calidad
 
-#### Estado Futuro (1 Sprint)
-- **Responsable:** Pedro Wittig
-- **Tarea:** Enmascarar el endpoint actual y disponibilizar una ruta segura con credenciales diferenciadas para proveedores externos
-- **Beneficios:**
-  - Seguridad mejorada con credenciales específicas para proveedores
+#### Estado Futuro (Requisitos para Disponibilización)
+- **Requisito 1:** Enmascaramiento mediante API Gateway ✅ (Pendiente)
+- **Requisito 2:** Certificaciones de calidad completadas ✅ (Pendiente)
+- **Requisito 3:** Ruta segura con credenciales diferenciadas ✅ (Pendiente)
+- **Beneficios una vez implementado:**
+  - Seguridad mejorada con API Gateway como intermediario
+  - Credenciales específicas para proveedores
   - Aislamiento de acceso
   - Mejor control y auditoría
-  - Posibilidad de rate limiting específico
+  - Rate limiting específico
+  - Protección de la base de datos productiva
 
-**Nota:** Esta documentación describe el endpoint actual. Una vez implementada la solución segura, se actualizará esta documentación con las nuevas credenciales y rutas.
+**Nota:** Esta documentación describe el endpoint actual y los requisitos para su disponibilización. Una vez implementado el API Gateway y completadas las certificaciones, se actualizará esta documentación con las nuevas rutas y credenciales.
 
 ### 1.4. Consideraciones Técnicas Importantes
 
-⚠️ **REQUISITOS OBLIGATORIOS ANTES DE PRODUCCIÓN:**
+⚠️ **REQUISITOS OBLIGATORIOS ANTES DE DISPONIBILIZAR PARA PROVEEDORES:**
 
-1. **Pruebas de Calidad de Estrés en Ambiente QA**
+1. **Enmascaramiento mediante API Gateway** ⚠️ **CRÍTICO**
+   - **OBLIGATORIO:** Las rutas DEBEN ser enmascaradas por API Gateway antes de disponibilizar su consumo
+   - El endpoint actual NO debe exponerse directamente a integraciones o proveedores externos
+   - El API Gateway actúa como capa de seguridad, control de acceso y protección
+
+2. **Certificaciones de Calidad Completas** ⚠️ **CRÍTICO**
+   - **OBLIGATORIO:** Pasar TODAS las certificaciones de calidad antes de disponibilizar
+   - Incluye: pruebas de estrés, seguridad, performance, validaciones funcionales
+   - No se permite disponibilizar sin completar todas las certificaciones
+   - Contactar al equipo de operaciones para coordinar las certificaciones
+
+3. **Pruebas de Calidad de Estrés en Ambiente QA**
    - El proceso de integración **DEBE** pasar pruebas de calidad de estrés en ambiente QA antes de ser desplegado a producción
    - Estas pruebas son obligatorias para no afectar la base de datos productiva
    - Contactar al equipo de operaciones para coordinar las pruebas de estrés
 
-2. **Ventana de Ejecución: Después de las 03:00 AM**
+4. **Ventana de Ejecución: Después de las 03:00 AM**
    - **OBLIGATORIO:** El proveedor, integración o proceso que consuma la API **DEBE** ejecutar las comunicaciones después de las 03:00 AM (horario local)
    - Esta restricción aplica para evitar impacto en la carga de la base de datos durante horarios de alta demanda
    - Las consultas ejecutadas fuera de esta ventana pueden ser rechazadas o limitadas
 
-3. **Paginación Obligatoria con $top=500**
+5. **Paginación Obligatoria con $top=500**
    - **OBLIGATORIO:** Todas las consultas **DEBEN** ser paginadas
    - El parámetro `$top` **SIEMPRE** debe ser `500` (máximo permitido, no se permite otro valor)
    - El parámetro `$skip` es obligatorio para navegar entre páginas
    - No se permite realizar consultas sin paginación
 
-4. **Confirmación con Operaciones**
+6. **Confirmación con Operaciones**
    - Se debe confirmar con el equipo de operaciones si hace falta alguna definición adicional a considerar
    - Contactar al equipo de operaciones antes de iniciar la integración en producción
+   - Verificar que el API Gateway esté configurado y las certificaciones de calidad estén completadas
 
 ---
 
@@ -114,7 +153,7 @@ User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 
 ---
 
-## 4. Endpoint: Consultar Citas Confirmadas
+## 4. Endpoint: Consultar Citas (Excluyendo Anuladas)
 
 ### 4.1. Endpoint Base
 ```
@@ -122,13 +161,29 @@ GET /ThirdPartyService/Appointments
 ```
 
 ### 4.2. Descripción
-Retorna una colección de citas confirmadas dentro de un rango de fechas especificado.
+Retorna una colección de citas dentro de un rango de fechas especificado, **excluyendo las citas con estado Cancelled (Anulado)**.
+
+**Estados incluidos en la consulta:**
+- `Booked` (Agendado)
+- `Confirmed` (Confirmado)
+- `Checked-In` (Presentado)
+- `Treated` (Atendido)
+- `Blocked` (Bloqueado)
+- `Not Treated` (No Presentado)
+
+**Estados excluidos:**
+- `Cancelled` (Anulado) - **NO se incluyen en los resultados**
 
 **⚠️ PAGINACIÓN OBLIGATORIA:**
 - Este endpoint **REQUIERE** paginación en todas las consultas
 - Los parámetros `$top=500` y `$skip` son **OBLIGATORIOS**
 - No se permite realizar consultas sin paginación
 - El valor de `$top` **SIEMPRE** debe ser `500` (máximo permitido)
+
+**⚠️ SOLO CONSULTA:**
+- Este endpoint es de **solo lectura (GET)**
+- No se permite crear, actualizar, modificar o eliminar citas
+- Solo se puede consultar información
 
 ### 4.3. Parámetros de Query (OData)
 
@@ -143,21 +198,88 @@ Retorna una colección de citas confirmadas dentro de un rango de fechas especif
 - `$expand` - Expansión de relaciones
 
 #### 4.3.1. $filter (OBLIGATORIO)
-Filtros aplicados a la consulta:
+Filtros aplicados a la consulta.
 
-**Sintaxis:**
-```
-$filter=DateTimeFrom ge {fecha_inicio} and DateTimeTo le {fecha_fin} and Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'
-```
-
-**Componentes del filtro:**
-- `DateTimeFrom ge {fecha_inicio}` - Citas desde esta fecha/hora (mayor o igual)
-- `DateTimeTo le {fecha_fin}` - Citas hasta esta fecha/hora (menor o igual)
-- `Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'` - Solo citas confirmadas
+**⚠️ IMPORTANTE:** El tope máximo de consulta es **500 resultados por página** (usar `$top=500`).
 
 **Formato de fecha:**
 - Formato ISO 8601 con timezone: `YYYY-MM-DDTHH:mm:ss-TZ:tz`
 - Ejemplo: `2025-12-15T21:48:36-03:00`
+
+##### Modos de Consulta Disponibles
+
+###### Modo 1: Consultar Todos los Estados (Excepto Anuladas)
+
+**Sintaxis:**
+```
+$filter=DateTimeFrom ge {fecha_inicio} and DateTimeTo le {fecha_fin} and Status ne WebApiModel.Enum.AppointmentStatus'Cancelled'
+```
+
+**Explicación:**
+- `Status ne` = "Status **diferente de**" (ne = not equal)
+- `Status ne Cancelled` = EXCLUYE las citas anuladas
+- **Incluye automáticamente:** Booked, Confirmed, CheckedIn, ServicePerformed, Blocked, NotPerformed
+
+**Ejemplo completo:**
+```
+$filter=DateTimeFrom ge 2025-12-15T21:48:36-03:00 and DateTimeTo le 2026-02-13T21:48:36-03:00 and Status ne WebApiModel.Enum.AppointmentStatus'Cancelled'&$top=500&$skip=0
+```
+
+###### Modo 2: Consultar por Estado Individual
+
+Puedes filtrar por cada estado específico usando `Status eq` (equal = igual a):
+
+**2.1. Solo Citas Agendadas (Booked)**
+```
+$filter=DateTimeFrom ge {fecha_inicio} and DateTimeTo le {fecha_fin} and Status eq WebApiModel.Enum.AppointmentStatus'Booked'&$top=500&$skip=0
+```
+
+**2.2. Solo Citas Confirmadas (Confirmed)**
+```
+$filter=DateTimeFrom ge {fecha_inicio} and DateTimeTo le {fecha_fin} and Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'&$top=500&$skip=0
+```
+
+**2.3. Solo Citas Presentadas (CheckedIn)**
+```
+$filter=DateTimeFrom ge {fecha_inicio} and DateTimeTo le {fecha_fin} and Status eq WebApiModel.Enum.AppointmentStatus'CheckedIn'&$top=500&$skip=0
+```
+
+**2.4. Solo Citas Atendidas (ServicePerformed)**
+```
+$filter=DateTimeFrom ge {fecha_inicio} and DateTimeTo le {fecha_fin} and Status eq WebApiModel.Enum.AppointmentStatus'ServicePerformed'&$top=500&$skip=0
+```
+
+**2.5. Solo Citas Bloqueadas (Blocked)**
+```
+$filter=DateTimeFrom ge {fecha_inicio} and DateTimeTo le {fecha_fin} and Status eq WebApiModel.Enum.AppointmentStatus'Blocked'&$top=500&$skip=0
+```
+
+**2.6. Solo Citas No Presentadas (NotPerformed)**
+```
+$filter=DateTimeFrom ge {fecha_inicio} and DateTimeTo le {fecha_fin} and Status eq WebApiModel.Enum.AppointmentStatus'NotPerformed'&$top=500&$skip=0
+```
+
+**⚠️ NOTA:** No se recomienda consultar citas anuladas (Cancelled) ya que están excluidas del requerimiento, pero si fuera necesario:
+```
+$filter=DateTimeFrom ge {fecha_inicio} and DateTimeTo le {fecha_fin} and Status eq WebApiModel.Enum.AppointmentStatus'Cancelled'&$top=500&$skip=0
+```
+
+##### Explicación de Estados
+
+| Valor en API | Descripción en Español | Valor Numérico | Uso Recomendado |
+|--------------|------------------------|----------------|------------------|
+| `Booked` | **Agendado** | 0 | Citas que han sido agendadas pero aún no confirmadas |
+| `Confirmed` | **Confirmado** | 1 | Citas que han sido confirmadas |
+| `CheckedIn` | **Presentado** | 3 | Citas donde el paciente se ha presentado (check-in realizado) |
+| `ServicePerformed` | **Atendido** | 4 | Citas donde el servicio ya fue realizado/atendido |
+| `Blocked` | **Bloqueado** | 5 | Citas que están bloqueadas |
+| `NotPerformed` | **No Presentado** | 6 | Citas donde el paciente no se presentó |
+| `Cancelled` | **Anulado** | 2 | Citas que han sido anuladas (excluidas del requerimiento principal) |
+
+**Componentes comunes del filtro:**
+- `DateTimeFrom ge {fecha_inicio}` - Citas desde esta fecha/hora (mayor o igual)
+- `DateTimeTo le {fecha_fin}` - Citas hasta esta fecha/hora (menor o igual)
+- `Status eq/ne {estado}` - Filtro por estado (eq = igual a, ne = diferente de)
 
 #### 4.3.2. $top (OBLIGATORIO - Máximo: 500) - PAGINACIÓN
 Límite de resultados por página:
@@ -198,7 +320,7 @@ GET /ThirdPartyService/Appointments?$filter=...&$top=500&$skip=0
 GET /ThirdPartyService/Appointments?$filter=...&$top=500&$skip=500
 
 # Página 3
-GET /ThirdPartyService/Appointments?$filter=...&$top=500&$skip=1000
+GET /ThirdPartyService/Appointments?$filter=...&$top=500&$skip=500
 ```
 
 #### 4.3.4. $orderby (Opcional pero Recomendado)
@@ -233,7 +355,7 @@ $expand=Patient,ResourceAppointments
 
 **URL codificada:**
 ```
-https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=0
+https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20ne%20WebApiModel.Enum.AppointmentStatus%27Cancelled%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=0
 ```
 
 **URL decodificada (para referencia):**
@@ -241,7 +363,7 @@ https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom
 https://proxy.megasalud.cl/ThirdPartyService/Appointments?
   $filter=DateTimeFrom ge 2025-12-15T21:48:36-03:00 
     and DateTimeTo le 2026-02-13T21:48:36-03:00 
-    and Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'
+    and Status ne WebApiModel.Enum.AppointmentStatus'Cancelled'
   &$orderby=DateTimeFrom asc
   &$top=500
   &$skip=0
@@ -254,7 +376,7 @@ https://proxy.megasalud.cl/ThirdPartyService/Appointments?
 https://proxy.megasalud.cl/ThirdPartyService/Appointments?
   $filter=DateTimeFrom ge 2025-12-15T21:48:36-03:00 
     and DateTimeTo le 2026-02-13T21:48:36-03:00 
-    and Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'
+    and Status ne WebApiModel.Enum.AppointmentStatus'Cancelled'
   &$orderby=DateTimeFrom asc
   &$top=500
   &$skip=500
@@ -267,7 +389,7 @@ https://proxy.megasalud.cl/ThirdPartyService/Appointments?
 https://proxy.megasalud.cl/ThirdPartyService/Appointments?
   $filter=DateTimeFrom ge 2025-12-15T21:48:36-03:00 
     and DateTimeTo le 2026-02-13T21:48:36-03:00 
-    and Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'
+    and Status ne WebApiModel.Enum.AppointmentStatus'Cancelled'
   &$orderby=DateTimeFrom asc
   &$top=500
   &$skip=1000
@@ -294,7 +416,7 @@ La API utiliza paginación basada en `$top` y `$skip` (offset-based pagination):
 #### Paso 1: Primera Página
 ```bash
 GET /ThirdPartyService/Appointments?
-  $filter=DateTimeFrom ge {fecha_inicio} and DateTimeTo le {fecha_fin} and Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'
+  $filter=DateTimeFrom ge {fecha_inicio} and DateTimeTo le {fecha_fin} and Status ne WebApiModel.Enum.AppointmentStatus'Cancelled'
   &$orderby=DateTimeFrom asc
   &$top=500
   &$skip=0
@@ -324,7 +446,7 @@ async function getAllConfirmedAppointments(dateFrom, dateTo) {
   let allAppointments = [];
   let hasMore = true;
 
-  const filter = `DateTimeFrom ge ${dateFrom} and DateTimeTo le ${dateTo} and Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'`;
+  const filter = `DateTimeFrom ge ${dateFrom} and DateTimeTo le ${dateTo} and Status ne WebApiModel.Enum.AppointmentStatus'Cancelled'`;
 
   while (hasMore) {
     const params = new URLSearchParams({
@@ -374,7 +496,7 @@ def get_all_confirmed_appointments(date_from: str, date_to: str, token: str) -> 
     all_appointments = []
     has_more = True
 
-    filter_query = f"DateTimeFrom ge {date_from} and DateTimeTo le {date_to} and Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'"
+    filter_query = f"DateTimeFrom ge {date_from} and DateTimeTo le {date_to} and Status ne WebApiModel.Enum.AppointmentStatus'Cancelled'"
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -414,7 +536,7 @@ appointments = get_all_confirmed_appointments(
 
 #### cURL (Primera Página)
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=0' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20ne%20WebApiModel.Enum.AppointmentStatus%27Cancelled%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=0' \
 --header 'Authorization: Bearer {TU_TOKEN}' \
 --header 'X-AppTimezone: -240' \
 --header 'Accept: application/json'
@@ -422,7 +544,7 @@ curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24fi
 
 #### cURL (Segunda Página)
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=500' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20ne%20WebApiModel.Enum.AppointmentStatus%27Cancelled%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=500' \
 --header 'Authorization: Bearer {TU_TOKEN}' \
 --header 'X-AppTimezone: -240' \
 --header 'Accept: application/json'
@@ -538,7 +660,7 @@ const isLastPage = data.value.length < pageSize;
 
 #### Error: "A binary operator with incompatible types was detected"
 **Causa:** Sintaxis incorrecta de enum en el filtro  
-**Solución:** Usar `Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'`
+**Solución:** Usar `Status ne WebApiModel.Enum.AppointmentStatus'Cancelled'` para excluir citas anuladas
 
 #### Error: "The query specified in the URI is not valid"
 **Causa:** Sintaxis OData incorrecta  
@@ -554,7 +676,7 @@ const isLastPage = data.value.length < pageSize;
 
 ### 9.1. Primera Página
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=0' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20ne%20WebApiModel.Enum.AppointmentStatus%27Cancelled%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=0' \
 --header 'Authorization: Bearer Tj17YiZYaDx5OFMzWl4iKw==' \
 --header 'X-AppTimezone: -240' \
 --header 'Accept: application/json, text/plain, */*' \
@@ -565,7 +687,7 @@ curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24fi
 
 ### 9.2. Segunda Página
 ```bash
-curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20eq%20WebApiModel.Enum.AppointmentStatus%27Confirmed%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=500' \
+curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24filter=DateTimeFrom%20ge%202025-12-15T21%3A48%3A36-03%3A00%20and%20DateTimeTo%20le%202026-02-13T21%3A48%3A36-03%3A00%20and%20Status%20ne%20WebApiModel.Enum.AppointmentStatus%27Cancelled%27&%24orderby=DateTimeFrom%20asc&%24top=500&%24skip=500' \
 --header 'Authorization: Bearer Tj17YiZYaDx5OFMzWl4iKw==' \
 --header 'X-AppTimezone: -240' \
 --header 'Accept: application/json, text/plain, */*'
@@ -575,23 +697,75 @@ curl --location 'https://proxy.megasalud.cl/ThirdPartyService/Appointments?%24fi
 
 ## 10. Valores de Enum
 
-### 10.1. AppointmentStatus
-| Valor | Descripción | Valor Numérico |
-|-------|-------------|---------------|
-| `Booked` | Reservada | 0 |
-| `Confirmed` | Confirmada | 1 |
-| `Cancelled` | Cancelada | 2 |
-| `CheckedIn` | Registrada/Check-in | 3 |
-| `ServicePerformed` | Servicio realizado | 4 |
-| `Blocked` | Bloqueada | 5 |
-| `NotPerformed` | No realizada | 6 |
+### 10.1. AppointmentStatus - Explicación Completa
 
-### 10.2. Sintaxis en Filtros
+**⚠️ IMPORTANTE:** El tope máximo de consulta es **500 resultados por página** (`$top=500`).
+
+| Valor en API | Descripción en Español | Valor Numérico | Descripción |
+|--------------|------------------------|----------------|-------------|
+| `Booked` | **Agendado** | 0 | Citas que han sido agendadas pero aún no confirmadas |
+| `Confirmed` | **Confirmado** | 1 | Citas que han sido confirmadas |
+| `CheckedIn` | **Presentado** | 3 | Citas donde el paciente se ha presentado (check-in realizado) |
+| `ServicePerformed` | **Atendido** | 4 | Citas donde el servicio ya fue realizado/atendido |
+| `Blocked` | **Bloqueado** | 5 | Citas que están bloqueadas |
+| `NotPerformed` | **No Presentado** | 6 | Citas donde el paciente no se presentó |
+| `Cancelled` | **Anulado** | 2 | Citas que han sido anuladas (excluidas del requerimiento principal) |
+
+### 10.2. Modos de Consulta y Sintaxis en Filtros
+
+#### Modo 1: Consultar Todos los Estados (Excepto Anuladas)
+
+**Sintaxis:**
 ```
+Status ne WebApiModel.Enum.AppointmentStatus'Cancelled'
+```
+
+**Explicación:**
+- `ne` = "not equal" (diferente de / no igual a)
+- Esto EXCLUYE las citas anuladas
+- Incluye automáticamente: Booked, Confirmed, CheckedIn, ServicePerformed, Blocked, NotPerformed
+
+**Ejemplo completo con paginación:**
+```
+$filter=DateTimeFrom ge 2025-12-15T21:48:36-03:00 and DateTimeTo le 2026-02-13T21:48:36-03:00 and Status ne WebApiModel.Enum.AppointmentStatus'Cancelled'&$top=500&$skip=0
+```
+
+#### Modo 2: Consultar por Estado Individual
+
+**Sintaxis para cada estado (siempre con `$top=500` y `$skip`):**
+
+```
+# Solo Agendado
+Status eq WebApiModel.Enum.AppointmentStatus'Booked'
+
+# Solo Confirmado
 Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'
+
+# Solo Presentado
+Status eq WebApiModel.Enum.AppointmentStatus'CheckedIn'
+
+# Solo Atendido
+Status eq WebApiModel.Enum.AppointmentStatus'ServicePerformed'
+
+# Solo Bloqueado
+Status eq WebApiModel.Enum.AppointmentStatus'Blocked'
+
+# Solo No Presentado
+Status eq WebApiModel.Enum.AppointmentStatus'NotPerformed'
 ```
 
-**Importante:** La sintaxis completamente calificada es requerida para filtros de enum.
+**Ejemplo completo para un estado específico:**
+```
+$filter=DateTimeFrom ge 2025-12-15T21:48:36-03:00 and DateTimeTo le 2026-02-13T21:48:36-03:00 and Status eq WebApiModel.Enum.AppointmentStatus'Confirmed'&$top=500&$skip=0
+```
+
+**Operadores:**
+- `eq` = "equal" (igual a) - Para filtrar por un estado específico
+- `ne` = "not equal" (diferente de) - Para excluir un estado
+
+**Importante:** 
+- La sintaxis completamente calificada es requerida para filtros de enum
+- Siempre incluir `$top=500` (máximo permitido) y `$skip` para paginación
 
 ---
 
@@ -631,58 +805,90 @@ El header `X-AppTimezone` especifica el offset de zona horaria en minutos desde 
 
 ## 13. Consideraciones Técnicas Adicionales
 
-**⚠️ IMPORTANTE:** Antes de implementar en producción, revisar la sección 14 "Consideraciones Técnicas Obligatorias" que contiene el checklist completo de requisitos.
+**⚠️ IMPORTANTE:** Antes de implementar en producción, revisar la sección 15 "Consideraciones Técnicas Obligatorias" que contiene el checklist completo de requisitos.
 
-## 14. Roadmap y Cambios Futuros
+## 14. Roadmap y Requisitos para Disponibilización
 
-### 13.1. Próximas Mejoras (1 Sprint)
+### 14.1. Requisitos Críticos Antes de Disponibilizar
+
+**⚠️ ESTAS RUTAS NO ESTÁN DISPONIBLES PARA PROVEEDORES HASTA COMPLETAR:**
 
 **Responsable:** Pedro Wittig
 
-**Mejoras planificadas:**
-1. **Ruta Segura Dedicada:** Nuevo endpoint específico para proveedores externos
-2. **Credenciales Diferenciadas:** Sistema de autenticación separado para proveedores
-3. **Rate Limiting:** Límites de requests por minuto/hora
-4. **Mejor Auditoría:** Logging específico para acceso de proveedores
-5. **Documentación Actualizada:** Esta documentación será actualizada con las nuevas credenciales y endpoints
+**Requisitos obligatorios:**
+1. **Enmascaramiento mediante API Gateway** ⚠️ **CRÍTICO**
+   - Las rutas DEBEN ser enmascaradas por API Gateway
+   - El endpoint actual NO debe exponerse directamente a proveedores externos
+   - El API Gateway actúa como capa de seguridad y control
 
-**Nota:** Una vez implementadas las mejoras, se notificará a los proveedores y se actualizará esta documentación.
+2. **Certificaciones de Calidad Completas** ⚠️ **CRÍTICO**
+   - Pasar TODAS las certificaciones de calidad
+   - Incluye: pruebas de estrés, seguridad, performance, validaciones funcionales
+   - No se permite disponibilizar sin completar todas las certificaciones
+
+3. **Ruta Segura Dedicada:** Nuevo endpoint específico para proveedores externos (a través del API Gateway)
+4. **Credenciales Diferenciadas:** Sistema de autenticación separado para proveedores
+5. **Rate Limiting:** Límites de requests por minuto/hora configurados en el API Gateway
+6. **Mejor Auditoría:** Logging específico para acceso de proveedores
+7. **Documentación Actualizada:** Esta documentación será actualizada con las nuevas rutas del API Gateway y credenciales
+
+**Nota:** Una vez implementado el API Gateway y completadas todas las certificaciones de calidad, se notificará a los proveedores y se actualizará esta documentación con las nuevas rutas y credenciales.
 
 ---
 
-## 14. Consideraciones Técnicas Obligatorias
+## 15. Consideraciones Técnicas Obligatorias
 
-### 14.1. Checklist Antes de Producción
+### 15.1. Checklist Antes de Disponibilizar para Proveedores
 
 ⚠️ **REQUISITOS OBLIGATORIOS QUE DEBEN CUMPLIRSE:**
 
+**Requisitos Críticos del Sistema:**
+- [ ] **API Gateway Implementado:** Las rutas están enmascaradas mediante API Gateway
+- [ ] **Certificaciones de Calidad:** TODAS las certificaciones de calidad han sido completadas y aprobadas
+- [ ] **Ruta Segura Disponible:** Ruta segura con credenciales diferenciadas implementada
+
+**Requisitos de Integración:**
 - [ ] **Pruebas de Estrés en QA:** El proceso ha pasado pruebas de calidad de estrés en ambiente QA
 - [ ] **Ventana de Ejecución:** El proceso está configurado para ejecutarse después de las 03:00 AM
 - [ ] **Paginación Implementada:** Todas las consultas usan `$top=500` (máximo permitido)
 - [ ] **Confirmación con Operaciones:** Se ha confirmado con el equipo de operaciones si hay definiciones adicionales
 
-### 14.2. Detalles de los Requisitos
+### 15.2. Detalles de los Requisitos
 
-#### 14.2.1. Pruebas de Estrés en QA
+#### 15.2.1. Enmascaramiento mediante API Gateway
+- **Obligatorio:** Las rutas DEBEN ser enmascaradas por API Gateway antes de disponibilizar
+- **Objetivo:** Proteger la infraestructura, controlar el acceso y proporcionar capa de seguridad
+- **Estado:** Pendiente de implementación
+- **Responsable:** Pedro Wittig
+- **Contacto:** Coordinar con el equipo de operaciones y Pedro Wittig
+
+#### 15.2.2. Certificaciones de Calidad
+- **Obligatorio:** Pasar TODAS las certificaciones de calidad antes de disponibilizar
+- **Incluye:** Pruebas de estrés, seguridad, performance, validaciones funcionales
+- **Objetivo:** Asegurar calidad, seguridad y estabilidad del servicio
+- **Estado:** Pendiente de completar
+- **Contacto:** Coordinar con el equipo de operaciones para las certificaciones
+
+#### 15.2.3. Pruebas de Estrés en QA
 - **Obligatorio:** Realizar pruebas de carga y estrés en ambiente QA antes de desplegar a producción
 - **Objetivo:** Asegurar que el proceso no afecte la base de datos productiva
 - **Contacto:** Coordinar con el equipo de operaciones para las pruebas
 
-#### 14.2.2. Ventana de Ejecución (Después de 03:00 AM)
+#### 15.2.4. Ventana de Ejecución (Después de 03:00 AM)
 - **Obligatorio:** Todas las consultas DEBEN ejecutarse después de las 03:00 AM (horario local)
 - **Razón:** Evitar impacto en la carga de la base de datos durante horarios de alta demanda
 - **Implementación:** Configurar el proceso/programador de tareas para ejecutar después de las 03:00 AM
 
-#### 14.2.3. Paginación Obligatoria ($top=500)
+#### 15.2.5. Paginación Obligatoria ($top=500)
 - **Obligatorio:** El parámetro `$top` SIEMPRE debe ser `500` (máximo permitido)
 - **No se permite:** Usar otro valor diferente a 500
 - **Razón:** Proteger la base de datos productiva limitando el tamaño de las respuestas
 
-#### 14.2.4. Confirmación con Operaciones
+#### 15.2.6. Confirmación con Operaciones
 - **Recomendado:** Contactar al equipo de operaciones para verificar si hay definiciones adicionales a considerar
 - **Contacto:** A través del equipo de integración de RedSalud
 
-## 15. Contacto y Soporte
+## 16. Contacto y Soporte
 
 ### 15.1. Para Obtener Credenciales
 Contactar al equipo de integración de RedSalud.
@@ -700,7 +906,7 @@ Contactar al equipo de integración de RedSalud.
 
 ---
 
-## 16. Changelog
+## 17. Changelog
 
 | Fecha | Versión | Cambios |
 |-------|---------|---------|
